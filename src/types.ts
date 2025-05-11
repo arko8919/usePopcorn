@@ -74,4 +74,5 @@ export type WatchedMovieData = {
     imdbRating: number;
     runtime: number;
     userRating: number;
+    countRatingDecisions: number;
 };

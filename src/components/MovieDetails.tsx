@@ -1,4 +1,4 @@
-import { useEffect, JSX, useState } from 'react';
+import { useEffect, JSX, useState, useRef } from 'react';
 import Loader from './Loader';
 import StarRating from './StarRating';
 import ErrorMessage from './ErrorMessage';
@@ -8,6 +8,7 @@ import {
     type MoviePreview,
     type WatchedMovieData,
 } from '../types';
+import { useKey } from '../customHooks/useKey';
 
 const KEY = 'fd1a1be1';
 export default function MovieDetails({
@@ -25,11 +26,22 @@ export default function MovieDetails({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [userRating, setUserRating] = useState(0);
+
+    const countRef = useRef(0);
+
+    useEffect(
+        function () {
+            if (userRating) countRef.current = countRef.current + 1;
+        },
+        [userRating]
+    );
+
+    // Check if a movie with selectedId is already in the watched list.
     const isWatched = watched.map((movie) => movie.imdbID).includes(selectedId);
+    // Get the user rating for the selected movie only if it exists.
     const watchedUserRating = watched.find(
         (movie) => movie.imdbID === selectedId
     )?.userRating;
-    // console.log(isWatched);
 
     useEffect(
         function () {
@@ -43,17 +55,14 @@ export default function MovieDetails({
 
                     const rawData = await res.json();
 
-                    //console.log(rawData);
                     const result = movieDetailsSchema.safeParse(rawData);
 
                     if (!result.success) {
                         console.log(result.error.message);
-                        throw new Error('The is no movie details');
+                        throw new Error('There is no movie details');
                     }
 
                     setMovie(result.data);
-
-                    // console.log(result.data);
                 } catch (err) {
                     const msgErr =
                         err instanceof Error
@@ -78,32 +87,7 @@ export default function MovieDetails({
         };
     }, [movie]);
 
-    // useEffect(() => {
-    //     function() {
-    //         if(!title) return;
-    //         document.title = `Movie | ${title}`;
-    //     }
-    // return function() {
-    //     document.title = 'usePopcorn'
-    // }
-    // }, [title]);
-
-    useEffect(
-        function () {
-            function calback(e: KeyboardEvent) {
-                if (e.code === 'Escape') {
-                    onCloseMovie();
-                }
-            }
-
-            document.addEventListener('keydown', calback);
-
-            return function () {
-                document.removeEventListener('keydown', calback);
-            };
-        },
-        [onCloseMovie]
-    );
+    useKey('Escape', onCloseMovie);
 
     if (!movie) return null;
 
@@ -129,6 +113,7 @@ export default function MovieDetails({
             imdbRating: Number(imdbRating),
             runtime: Number(runtime.split(' ').at(0)),
             userRating,
+            countRatingDecisions: countRef.current,
         };
         onAddWatched(WatchedMovie);
         onCloseMovie();

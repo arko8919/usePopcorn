@@ -1,10 +1,5 @@
-import { JSX, useState, useEffect } from 'react';
-import {
-    movieSchema,
-    type MovieData,
-    type ApiResponse,
-    type WatchedMovieData,
-} from './types';
+import { JSX, useState } from 'react';
+import { type WatchedMovieData } from './types';
 
 import Loader from './components/Loader';
 import ErrorMessage from './components/ErrorMessage';
@@ -18,111 +13,56 @@ import WatchedSummary from './components/WatchedSummary';
 import Box from './components/Box';
 import WatchedMoviesList from './components/WatchedMovieList';
 
-const KEY = 'fd1a1be1';
+import { useMovies } from './customHooks/useMovies';
+import { useLocalStorageState } from './customHooks/useLocalStorageState';
 
 export default function App(): JSX.Element {
     const [query, setQuery] = useState('');
-    const [movies, setMovies] = useState<MovieData[]>([]);
-    const [watched, setWatched] = useState<WatchedMovieData[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
+    const { movies, isLoading, error } = useMovies(query);
+
+    const [watched, setWatched] = useLocalStorageState<WatchedMovieData[]>(
+        [],
+        'watched'
+    );
+
+    // When clicked it open movie details box and when clicked again it close the movie details box
     function handleSelectMovie(id: string | null) {
         setSelectedId((selectedId) => (id === selectedId ? null : id));
     }
 
+    // Close movie details box
     function handleCloseMovie() {
         setSelectedId(null);
     }
 
+    // Add to movie watched list
     function handleAddWatch(movie: WatchedMovieData) {
         setWatched((watched) => [...watched, movie]);
     }
 
+    // Delete movie from watched list
     function handleDeleteWatched(id: string | null) {
         setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
     }
-
-    useEffect(
-        function () {
-            const controller = new AbortController();
-            async function fetchMovies() {
-                try {
-                    setIsLoading(true);
-                    setError('');
-                    const res = await fetch(
-                        `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
-                        { signal: controller.signal }
-                    );
-
-                    if (!res.ok)
-                        throw new Error(
-                            'Something went wrong with fetching movies'
-                        );
-
-                    const rawData: ApiResponse = await res.json();
-
-                    // Zod library handle this case of error
-                    // if (rawData.Response === 'False')
-                    //     throw new Error('Movie not found');
-
-                    const result = movieSchema
-                        .array()
-                        .safeParse(rawData.Search);
-
-                    if (!result.success) {
-                        console.log(result.error.message);
-                        throw new Error('Failed to parse movies!');
-                    }
-
-                    setMovies(result.data);
-                    setError('');
-                    //console.log(result.data);
-                } catch (err) {
-                    if (err instanceof Error) {
-                        if (err.name !== 'AbortError') {
-                            setError(err.message);
-                        }
-                    } else {
-                        setError('Something went wrong...');
-                    }
-                } finally {
-                    setIsLoading(false);
-                }
-            }
-            if (query.length < 3) {
-                setMovies([]);
-                setError('');
-                return;
-            }
-            handleCloseMovie();
-            fetchMovies();
-
-            return function () {
-                controller.abort();
-            };
-        },
-        [query]
-    );
 
     return (
         <>
             <NavBar>
                 <Search query={query} setQuery={setQuery} />
-                <NumResults movies={movies} />
+                <NumResults moviesQuantity={movies.length} />
             </NavBar>
             <Main>
                 <Box>
-                    {/* {isLoading ? <Loader /> : <MovieList movies={movies} />} */}
                     {isLoading && <Loader />}
+                    {error && <ErrorMessage message={error} />}
                     {!isLoading && !error && (
                         <MovieList
                             movies={movies}
                             onSelectMovie={handleSelectMovie}
                         />
                     )}
-                    {error && <ErrorMessage message={error} />}
                 </Box>
 
                 <Box>

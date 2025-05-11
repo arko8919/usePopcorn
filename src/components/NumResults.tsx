@@ -1,13 +1,12 @@
 import { JSX } from 'react';
-import { type MovieData } from '../types';
 export default function NumResults({
-    movies,
+    moviesQuantity,
 }: {
-    movies: MovieData[];
+    moviesQuantity: number;
 }): JSX.Element {
     return (
         <p className="num-results">
-            Found <strong>{movies.length}</strong> results
+            Found <strong>{moviesQuantity}</strong> results
         </p>
     );
 }
